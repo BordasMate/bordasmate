@@ -222,3 +222,22 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); backdrop-filter: blur(2px); }
 textarea.poems { font-family: "Literata", Georgia, serif; font-size: 14px; line-height: 1.55; white-space: pre-wrap; min-height: 220px; }
 .text-ops { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .text-status { color: #bdf; }
+
+/* Word-szerű formázott szövegmező */
+.field.rt { display: grid; gap: 6px; }
+.rt-wrap { border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2, #15171c); overflow: hidden; }
+.rt-wrap:focus-within { border-color: #c9a27a; }
+.rt-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 5px; border-bottom: 1px solid var(--line); background: rgba(255, 255, 255, .03); position: sticky; top: 0; z-index: 1; }
+.rt-btn { min-width: 28px; height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: inherit; font: 600 13px/1 system-ui, sans-serif; cursor: pointer; }
+.rt-btn:hover { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .12); }
+.rt-btn.on { background: rgba(201, 162, 122, .28); border-color: rgba(201, 162, 122, .6); }
+.rt-sep { width: 1px; margin: 3px 4px; background: var(--line); }
+.rt-edit { min-height: 90px; max-height: 60vh; overflow: auto; padding: 10px 12px; outline: none; font-family: "Literata", Georgia, serif; font-size: 15px; line-height: 1.6; white-space: pre-wrap; tab-size: 10; tab-size: 2.8em; overflow-wrap: anywhere; }
+.rt-edit p { margin: 0 0 .8em; }
+.rt-edit.verse p { margin: 0; }
+.rt-edit ul, .rt-edit ol { margin: 0 0 .8em; padding-left: 1.6em; }
+.rt-edit a { color: #9cf; }
+.rt-edit:empty::before { content: "…"; color: #666; }
+.poem-list { display: grid; gap: 12px; }
+.poem-item { display: grid; gap: 6px; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; }
+.poem-head { display: grid; grid-template-columns: 1fr auto auto auto; gap: 4px; align-items: center; }

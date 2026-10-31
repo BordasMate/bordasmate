@@ -537,3 +537,14 @@ html.reader-open #crumbs, html.reader-open #cells, html.reader-open .site-foot, 
 .e-poem-body { white-space: pre-wrap; font-family: var(--body); font-size: 1.02em; line-height: 1.62; color: var(--text); overflow-wrap: anywhere; }
 .e-src { margin: 1.6em 0 0; font-size: .78em; color: var(--text-dim); }
 .e-src a { color: var(--text-dim); }
+
+/* ---------- formázott szöveg (a szerkesztő Word-szerű mezőiből) ---------- */
+.rich { white-space: pre-wrap; tab-size: 10; tab-size: 2.8em; overflow-wrap: anywhere; }
+.rich p { margin: 0 0 1em; }
+.rich.verse p { margin: 0; }
+.rich ul, .rich ol { margin: 0 0 1em; padding-left: 1.5em; white-space: normal; }
+.rich li { white-space: pre-wrap; }
+.rich a { color: inherit; text-decoration-color: var(--mono-tint, currentColor); text-underline-offset: .18em; }
+.rich b { font-weight: 700; }
+.about-rich { margin: 0 0 1em; }
+.poem.rich { white-space: pre-wrap; }

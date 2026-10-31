@@ -96,6 +96,17 @@ keretben futnak, a „Teljes képernyő” gombbal kinagyíthatók (Esc: vissza)
 A böngészők csak kattintás után engednek hangot, ezért a programok egy
 kattintással indulnak.
 
+## Formázott szöveg (Word-szerű szerkesztés)
+
+A bemutatás, a „Vers vagy részlet” és a közlések szövege formázható szövegdobozban
+szerkeszthető: Ctrl+B félkövér, Ctrl+I dőlt, Ctrl+U aláhúzott, Ctrl+K link,
+Ctrl+E / L / R / J igazítás, Ctrl+Shift+= felső és Ctrl+= alsó index,
+Ctrl+Szóköz formázás törlése, Tab tabulátor (Shift+Tab visszavonja), felsorolás
+és számozott lista a gombsoron. Wordből beillesztve a félkövér, dőlt, aláhúzás,
+igazítás és a tabulátorok megmaradnak; betűtípus, méret és szín nem (a honlap
+saját betűit használja). A szöveg `aboutHtml`, `poemHtml`, illetve a
+közléseknél `poems[].html` mezőben tárolódik (ellenőrzött, szűrt HTML).
+
 ## Versek, fordítások a honlapon olvashatóan
 
 A publikációs listák tételei (`entries`) szöveget is kaphatnak (`poems`: `title`,

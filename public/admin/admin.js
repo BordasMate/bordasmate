@@ -2,6 +2,8 @@
 // Netlify Functionön keresztül közvetlenül a honlap tárhelyére (Netlify Blobs) menti.
 // A mentés azonnal él, újraépítés és GitHub nélkül.
 
+import { sanitize, plainToHtml } from "/js/richtext.js";
+
 const LS_DRAFT = "bm-draft";
 const LS_PASS = "bm-admin-pass";
 const SS_PASS = "bm-admin-pass";
@@ -259,6 +261,84 @@ function textField(label, value, oninput, { type = "text", placeholder = "", hel
     : h("input", { type, value: value ?? "", placeholder, oninput: (e) => oninput(e.target.value) });
   return h("label.field", {}, h("span", {}, label), input, help ? h("small", {}, help) : null);
 }
+/* ---------------- Word-szerű formázott szövegmező ----------------
+   Ctrl+B félkövér, Ctrl+I dőlt, Ctrl+U aláhúzott, Ctrl+K link, Ctrl+E/L/R/J igazítás,
+   Ctrl+Shift+= felső index, Ctrl+= alsó index, Ctrl+Szóköz formázás törlése, Tab tabulátor.
+   Wordből beillesztve a formázás (félkövér, dőlt, igazítás, tabulátor) megmarad. */
+const RT_BUTTONS = [
+  ["bold", "F", "Félkövér (Ctrl+B)", "font-weight:800"],
+  ["italic", "D", "Dőlt (Ctrl+I)", "font-style:italic;font-family:Georgia,serif"],
+  ["underline", "A", "Aláhúzott (Ctrl+U)", "text-decoration:underline"],
+  ["strikeThrough", "Á", "Áthúzott", "text-decoration:line-through"],
+  ["superscript", "x²", "Felső index (Ctrl+Shift+=)"],
+  ["subscript", "x₂", "Alsó index (Ctrl+=)"],
+  "|",
+  ["justifyLeft", "⯇", "Balra igazítás (Ctrl+L)"],
+  ["justifyCenter", "≡", "Középre igazítás (Ctrl+E)"],
+  ["justifyRight", "⯈", "Jobbra igazítás (Ctrl+R)"],
+  ["justifyFull", "☰", "Sorkizárt (Ctrl+J)"],
+  "|",
+  ["insertUnorderedList", "•", "Felsorolás"],
+  ["insertOrderedList", "1.", "Számozott lista"],
+  ["tab", "⇥", "Tabulátor (Tab)"],
+  ["link", "🔗", "Link (Ctrl+K)"],
+  ["removeFormat", "⌫", "Formázás törlése (Ctrl+Szóköz)"],
+];
+function richField(label, html, onChange, { verse = false, help = "", minHeight = 0 } = {}) {
+  const ed = h("div.rt-edit" + (verse ? ".verse" : ""), { contentEditable: "true", spellcheck: true, html: html || "", role: "textbox", "aria-multiline": "true", "aria-label": label });
+  if (minHeight) ed.style.minHeight = minHeight + "px";
+  const emit = () => onChange(sanitize(ed.innerHTML));
+  const cmd = (c, v = null) => {
+    ed.focus();
+    if (c === "tab") document.execCommand("insertText", false, "\t");
+    else if (c === "link") {
+      const url = prompt("Link címe (https://…):", "https://");
+      if (url && /^(https?:|mailto:)/i.test(url.trim())) document.execCommand("createLink", false, url.trim());
+      else if (url !== null) document.execCommand("unlink");
+    } else if (c === "removeFormat") { document.execCommand("removeFormat"); document.execCommand("unlink"); }
+    else document.execCommand(c, false, v);
+    emit(); refresh();
+  };
+  const btns = RT_BUTTONS.map((b) => b === "|" ? h("span.rt-sep") : h("button.rt-btn", { type: "button", title: b[2], style: b[3] || "", onmousedown: (e) => e.preventDefault(), onclick: () => cmd(b[0]) }, b[1]));
+  const bar = h("div.rt-bar", {}, btns);
+  const STATE = ["bold", "italic", "underline", "strikeThrough", "superscript", "subscript", "justifyCenter", "justifyRight", "justifyFull", "insertUnorderedList", "insertOrderedList"];
+  function refresh() {
+    if (!ed.contains(document.getSelection()?.anchorNode)) return;
+    RT_BUTTONS.forEach((b, i) => { if (b !== "|" && STATE.includes(b[0])) { try { btns[i].classList.toggle("on", document.queryCommandState(b[0])); } catch {} } });
+  }
+  document.addEventListener("selectionchange", refresh);
+  ed.addEventListener("focus", () => { try { document.execCommand("defaultParagraphSeparator", false, "p"); document.execCommand("styleWithCSS", false, false); } catch {} });
+  ed.addEventListener("input", emit);
+  ed.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+    if (e.key === "Tab" && !mod && !e.altKey) {
+      e.preventDefault();
+      if (e.shiftKey) {   // Shift+Tab: a kurzor előtti tabulátor törlése
+        const sel = document.getSelection();
+        if (sel.isCollapsed && sel.anchorNode?.nodeType === 3 && sel.anchorOffset > 0 && sel.anchorNode.nodeValue[sel.anchorOffset - 1] === "\t") document.execCommand("delete");
+      } else cmd("tab");
+      return;
+    }
+    if (!mod) return;
+    const map = { b: "bold", i: "italic", u: "underline", k: "link", e: "justifyCenter", l: "justifyLeft", r: "justifyRight", j: "justifyFull" };
+    if (map[k] && !e.shiftKey && !e.altKey) { e.preventDefault(); cmd(map[k]); return; }
+    if ((e.key === "=" || e.key === "+" || e.code === "Equal") && !e.altKey) { e.preventDefault(); cmd(e.shiftKey ? "superscript" : "subscript"); return; }
+    if (e.code === "Space") { e.preventDefault(); cmd("removeFormat"); }
+  });
+  // beillesztés: Wordből, weboldalról is – csak a megengedett formázás marad meg
+  ed.addEventListener("paste", (e) => {
+    const cd = e.clipboardData;
+    if (!cd) return;
+    e.preventDefault();
+    const html = cd.getData("text/html");
+    const clean = html ? sanitize(html) : plainToHtml(cd.getData("text/plain"), { verse: true });
+    document.execCommand("insertHTML", false, clean);
+    emit();
+  });
+  ed.addEventListener("drop", (e) => { e.preventDefault(); });
+  return h("div.field.rt", {}, h("span", {}, label), h("div.rt-wrap", {}, bar, ed), help ? h("small", {}, help) : null);
+}
+
 function titleSlug(obj, siblings, { onTitle } = {}) {
   const slugInput = h("input", { value: obj.slug || "", oninput: (e) => { obj.slug = slugify(e.target.value) === e.target.value ? e.target.value : e.target.value.toLowerCase(); changed(); } });
   slugInput.addEventListener("change", (e) => { obj.slug = uniqueSlug(slugify(e.target.value), siblings.filter((s) => s !== obj).map((s) => s.slug)); slugInput.value = obj.slug; changed(); });
@@ -439,8 +519,8 @@ function viewWork() {
           changed(); select({ kind: "work", ...target.ref, wi: dest.works.length - 1 });
         } }, subs.map((x, i) => h("option", { value: i, selected: i === curIdx }, x.label))))),
     group("Szöveg",
-      textField("Bemutatás", about, (v) => { w.about = v.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean); changed({ tree: false }); }, { area: true, rows: 5, help: "Üres sorral elválasztott bekezdések." }),
-      textField("Vers vagy részlet", w.poem, (v) => { w.poem = v || undefined; changed({ tree: false }); }, { area: true, rows: 7, help: "A sortörések és behúzások megmaradnak." })),
+      richField("Bemutatás", w.aboutHtml || plainToHtml(about), (v) => { if (v) w.aboutHtml = v; else delete w.aboutHtml; delete w.about; changed({ tree: false }); }, { minHeight: 110 }),
+      richField("Vers vagy részlet", w.poemHtml || plainToHtml(w.poem, { verse: true }), (v) => { if (v) w.poemHtml = v; else delete w.poemHtml; delete w.poem; changed({ tree: false }); }, { verse: true, minHeight: 160, help: "Enter: új sor · üres sor: versszakhatár · Tab: behúzás" })),
     group("Média",
       mediaField("Kép", w.image, (v) => { w.image = v || undefined; changed({ tree: false }); }, "image/*", "pl. /media/borito.jpg"),
       textField("Interaktív mű (beágyazott program)", w.app, (v) => { w.app = v || undefined; changed({ tree: false }); }, { placeholder: "/muvek/tervrajzok/", help: "A honlapba épített program címe (a public/muvek/ mappában). A műoldalon közvetlenül fut, teljes képernyőre nagyítható." }),
@@ -622,19 +702,6 @@ function linksEditor(w) {
 
 /* ---------------- a közlések szövege (versek, fordítások a honlapon olvashatóan) ---------------- */
 
-// a szövegmező formája: minden vers egy „### Cím” sorral kezdődik
-const poemsToText = (ps) => (ps || []).map((p) => `### ${p.title || ""}\n${p.text || ""}`).join("\n\n");
-function textToPoems(t) {
-  const parts = String(t || "").split(/^###[ \t]?(.*)$/m);
-  const out = [];
-  const body = (x) => String(x || "").replace(/^([ \t]*\n)+/, "").replace(/\s+$/, "");
-  if (body(parts[0])) out.push({ title: "", text: body(parts[0]) });
-  for (let i = 1; i < parts.length; i += 2) {
-    const p = { title: parts[i].trim(), text: body(parts[i + 1]) };
-    if (p.title || p.text) out.push(p);
-  }
-  return out;
-}
 // a közlés címéből a versek címei: „Szerző: Cím1; Cím2” → [Cím1, Cím2], és a szerző vezetékneve
 function entryTitles(en) {
   let t = String(en.title || "");
@@ -677,24 +744,37 @@ function entriesEditor(w) {
   };
   // a tétel szövege: lenyitható szerkesztő, betöltés a forrásból
   function textBox(en) {
-    const n = (en.poems || []).length;
-    const ta = h("textarea.poems", { rows: 12, placeholder: "### Cím\nelső sor\nmásodik sor\n\núj versszak…\n\n### Következő vers címe\n…", value: poemsToText(en.poems),
-      oninput: (e) => { const ps = textToPoems(e.target.value); if (ps.length) en.poems = ps; else delete en.poems; head.textContent = label(); changed({ tree: false }); } });
     const status = h("small.text-status", {}, "");
     const label = () => (en.poems?.length ? `Szöveg a honlapon (${en.poems.length} vers) ▾` : "Szöveg a honlapon (nincs) ▾");
-    const head = h("button.small.text-toggle", { type: "button", onclick: () => { area.hidden = !area.hidden; } }, label());
+    const head = h("button.small.text-toggle", { type: "button", onclick: () => { area.hidden = !area.hidden; if (!area.hidden && !list.childElementCount) drawPoems(); } }, label());
+    const list = h("div.poem-list");
+    const touch = () => { if (en.poems && !en.poems.length) delete en.poems; head.textContent = label(); changed({ tree: false }); };
+    function drawPoems() {
+      list.innerHTML = "";
+      (en.poems || []).forEach((p, i) => {
+        list.append(h("div.poem-item", {},
+          h("div.poem-head", {},
+            h("input", { value: p.title || "", placeholder: "A vers címe", oninput: (e) => { p.title = e.target.value; touch(); } }),
+            h("button.icon", { type: "button", title: "Fel", onclick: () => { moveIn(en.poems, i, -1); touch(); drawPoems(); } }, "↑"),
+            h("button.icon", { type: "button", title: "Le", onclick: () => { moveIn(en.poems, i, 1); touch(); drawPoems(); } }, "↓"),
+            h("button.icon", { type: "button", title: "A vers törlése", onclick: () => { if (!confirm(`Törlöd: „${p.title || "cím nélküli vers"}”?`)) return; en.poems.splice(i, 1); touch(); drawPoems(); } }, "✕")),
+          richField("", p.html || plainToHtml(p.text, { verse: true }), (v) => { p.html = v; delete p.text; touch(); }, { verse: true, minHeight: 120 })));
+      });
+      list.append(h("button.small", { type: "button", onclick: () => { en.poems = en.poems || []; en.poems.push({ title: "", html: "" }); touch(); drawPoems(); } }, "+ vers"));
+    }
     const load = h("button.small", { type: "button", hidden: !en.link, onclick: async () => {
       if (en.poems?.length && !confirm("Felülírod a meglevő szöveget a forrásból betöltöttel?")) return;
       load.disabled = true; status.textContent = "Betöltés a forrásból…";
       try {
         const r = await importEntry(en);
-        en.poems = r.poems; ta.value = poemsToText(r.poems); head.textContent = label(); changed({ tree: false });
+        en.poems = r.poems.map((p) => ({ title: p.title, html: plainToHtml(p.text, { verse: true }) }));
+        touch(); drawPoems();
         status.textContent = `Betöltve (${r.kind === "pdf" ? `PDF, ${r.keptPages}/${r.pages} oldal` : "weboldal"}; ${r.found} cím alapján bontva). Nézd át: töröld a nem odavaló részeket (szerzői jegyzet, más szerzők), aztán Mentés.`;
       } catch (err) { status.textContent = "Nem sikerült: " + err.message; }
       load.disabled = false;
     } }, "Betöltés a forrásból");
-    const area = h("div.text-area", { hidden: true }, ta, h("div.text-ops", {}, load, status),
-      h("small", {}, "Minden vers egy „### Cím” sorral kezdődik; a sortörések és az üres sorok (versszakok) így jelennek meg a honlapon."));
+    const area = h("div.text-area", { hidden: true }, h("div.text-ops", {}, load, status), list,
+      h("small", {}, "Enter: új sor · üres sor: versszakhatár · Tab: behúzás · Ctrl+B / I / U: félkövér, dőlt, aláhúzott."));
     return h("div.text-box", {}, head, area);
   }
   draw();
@@ -725,7 +805,7 @@ function entriesEditor(w) {
           let ok = 0; const bad = [];
           for (let i = 0; i < todo.length; i++) {
             btn.textContent = `Betöltés… ${i + 1}/${todo.length}`;
-            try { const r = await importEntry(todo[i]); todo[i].poems = r.poems; ok++; } catch (err) { bad.push(`${todo[i].title}: ${err.message}`); }
+            try { const r = await importEntry(todo[i]); todo[i].poems = r.poems.map((p) => ({ title: p.title, html: plainToHtml(p.text, { verse: true }) })); ok++; } catch (err) { bad.push(`${todo[i].title}: ${err.message}`); }
           }
           btn.disabled = false; btn.textContent = "Szövegek a forrásokból";
           changed({ tree: false }); draw();

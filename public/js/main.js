@@ -1,4 +1,5 @@
 import { createOrganism, TINTS, applySettings } from "./organism.js";
+import { sanitize } from "./richtext.js";
 
 /* ---------- tartalom (content.json; az admin előnézetében a piszkozat) ---------- */
 
@@ -228,8 +229,11 @@ function workBody(cat, sub, w) {
   h += `<h2 class="work-title">${esc(w.title)}</h2>`;
   if (w.meta) h += `<p class="meta">${esc(w.meta)}</p>`;
   if (w.image) h += `<figure class="figure"><img src="${esc(w.image)}" alt="${esc(w.title)}" loading="lazy"></figure>`;
-  for (const p of w.about || []) h += `<p class="about">${esc(p)}</p>`;
-  if (w.poem) h += `<div class="poem">${esc(w.poem)}</div>`;
+  // formázott (a szerkesztő Word-szerű mezőiből) vagy régi, sima szöveg
+  if (w.aboutHtml) h += `<div class="rich about-rich">${sanitize(w.aboutHtml)}</div>`;
+  else for (const p of w.about || []) h += `<p class="about">${esc(p)}</p>`;
+  if (w.poemHtml) h += `<div class="poem rich verse">${sanitize(w.poemHtml)}</div>`;
+  else if (w.poem) h += `<div class="poem">${esc(w.poem)}</div>`;
   if (w.audio) h += `<audio class="audio" controls preload="none" src="${esc(w.audio)}"></audio>`;
   if (w.issues?.length) {
     h += `<h3 class="entries-title">${esc(w.issuesTitle || "Lapszámok")}</h3>`;
@@ -254,7 +258,7 @@ function workBody(cat, sub, w) {
         ${e.source ? `<span class="e-source">${esc(e.source)}</span>` : ""}
         ${e.note ? `<span class="e-note">${esc(e.note)}</span>` : ""}
         ${e.poems?.length ? `<button type="button" class="e-read" aria-expanded="false">olvasás</button>
-          <div class="e-text" hidden>${e.poems.map((p) => `<section class="e-poem">${p.title ? `<h5>${esc(p.title)}</h5>` : ""}<div class="e-poem-body">${esc(p.text || "")}</div></section>`).join("")}
+          <div class="e-text" hidden>${e.poems.map((p) => `<section class="e-poem">${p.title ? `<h5>${esc(p.title)}</h5>` : ""}${p.html ? `<div class="e-poem-body rich verse">${sanitize(p.html)}</div>` : `<div class="e-poem-body">${esc(p.text || "")}</div>`}</section>`).join("")}
           ${e.link ? `<p class="e-src">Első közlés: ${esc(e.source || "")} · <a href="${esc(e.link)}" target="_blank" rel="noopener">eredeti ↗</a></p>` : ""}</div>`
           : e.link ? `<a class="e-link" href="${esc(e.link)}" target="_blank" rel="noopener">megnyitás ↗</a>` : ""}
       </li>`).join("")}</ul></section>`).join("");

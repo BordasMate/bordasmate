@@ -1189,7 +1189,7 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
     let best = null, bf = 1;
     for (const b of bodies.values()) {
       if (b.ax < 2 || (b.kind === "drift" && Math.abs(b.z) > 0.3)) continue;
-      if (b.pointText) continue;
+      if (b.pointText || !b.href) continue;   // díszamőbák (nem linkek) nem fogják el a kattintást
       const f = Math.hypot((x - (b.sx ?? b.x)) / b.ax, (y - (b.sy ?? b.y)) / b.ay);
       if (f < bf) { bf = f; best = b; }
     }

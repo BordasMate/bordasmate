@@ -127,11 +127,12 @@ function sceneFor(r, W, H) {
     const items = [];
     cats.forEach((c, k) => {
       items.push({ key: "/" + c.slug, label: c.title, href: link("/" + c.slug), kind: "center", tint: tintOf(c.palette), size: z.center * 0.85, minR: z.minChild * 1.1, sets: [k], nucleus: k, pointText: true, textSize: big });
-      c.children.forEach((s) => items.push({ key: subKey(c, s), label: s.title, href: subHref(c, s), kind: "child", tint: tintOf(c.palette), size: z.child * 0.9, minR: z.minChild * 0.85, sets: [k], peek: true }));
+      // az almenük amőbái itt csak díszek (nem kattinthatók, cím nélkül); a menübe lépve válnak elérhetővé
+      c.children.forEach((s) => items.push({ key: subKey(c, s), label: s.title, kind: "child", tint: tintOf(c.palette), size: z.child * 0.9, minR: z.minChild * 0.85, sets: [k], peek: true }));
     });
     shared.forEach((s) => {
       const ks = s.in.map((slug) => cats.findIndex((c) => c.slug === slug)).filter((k) => k >= 0);
-      if (ks.length) items.push({ key: "~" + s.slug, label: s.title, href: subHref(cats[ks[0]], s), kind: "child", tint: 0, size: z.child * 0.9, minR: z.minChild * 0.9, sets: ks, peek: true });
+      if (ks.length) items.push({ key: "~" + s.slug, label: s.title, kind: "child", tint: 0, size: z.child * 0.9, minR: z.minChild * 0.9, sets: ks, peek: true });
     });
     items.push(...drifters(t, W, true));
     return {
@@ -276,7 +277,6 @@ function a11yLinks(r) {
   const out = [];
   const add = (t, p) => out.push(`<li><a href="${esc(link(p))}">${esc(t)}</a></li>`);
   if (r.type === "home") site.categories.forEach((c) => add(c.title, "/" + c.slug));
-  if (r.type === "home") shared.forEach((s) => add(s.title, `/${s.in[0]}/${s.slug}`));
   if (r.type === "category") { childrenOf(r.cat).forEach((s) => add(s.title, `/${r.cat.slug}/${s.slug}`)); add(site.name, "/"); }
   if (r.type === "sub" || r.type === "work") {
     (r.sub.works || []).forEach((w) => add(w.title, `/${r.cat.slug}/${r.sub.slug}/${w.slug}`));

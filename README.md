@@ -19,8 +19,8 @@ A felület egy valós időben számolt, LiDAR-szerű **pontfelhő 3D térben**:
 - **Mélység:** lebegő pontkristályok a lap fölött, mögött és a kamera előtt,
   mélységélesség, lassan mozgó kamera, egérrel parallaxis.
 - **Főmenü:** a két halmaz neve (IRODALOM, ZENE) nagy, térbeli pontfelhő-betűkkel,
-  „blob tracking” stílusú követődobozokkal; alattuk az almenük amőbái, amelyek
-  címe rámutatáskor jelenik meg (ilyenkor a nagy felirat feljebb csúszik).
+  „blob tracking” stílusú követődobozokkal; alattuk az almenük amőbái díszként
+  (itt csak a két felirat kattintható, az almenük a menübe lépve érhetők el).
   A név a bal felső sávban.
 - **Glitch:** kb. 10 másodpercenként egy rövid sorozat, oldalváltáskor teljes
   képes glitch. **Színek:** a nyitóoldal színes, az almenük egyszínűek, de

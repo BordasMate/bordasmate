@@ -457,6 +457,7 @@ function go(path) {
 }
 
 // interaktív mű teljes képernyőn: a háttérgrafika ilyenkor szünetel, hogy a mű kapja a gép erejét
+let resizeLater = false;
 const isPhone = () => matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) < 600;
 // álló képernyőn a teljes képernyős mű 90°-kal elforgatva jelenik meg (fekvő nézet); ha a telefont elfordítják, visszaáll
 function updateRot() {
@@ -470,6 +471,7 @@ async function setAppFull(stage, on) {
   stage.querySelector(".app-full").textContent = on ? "Bezárás ✕" : "Teljes képernyő ⤢";
   if (org && org.pause) org.pause(on);
   if (on) {
+    clearTimeout(rt);   // egy még függő újrarajzolás se zárja be
     stage.querySelector("iframe").focus();
     if (isPhone()) {
       // az egész oldal megy teljes képernyőre (nem a keret: azt a böngésző nem engedné elforgatni)
@@ -482,6 +484,7 @@ async function setAppFull(stage, on) {
     if (stage._fs) { stage._fs = false; try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (e) {} }
     try { screen.orientation.unlock(); } catch (e) {}
     fitAppStage();
+    if (resizeLater) { resizeLater = false; setTimeout(() => { if (document.querySelector(".app-stage.is-full")) return; if (org) org.resize(); render(); }, 300); }
   }
   updateRot();
   setTimeout(updateRot, 400);   // a tájolás váltása után a méretek kicsit később frissülnek
@@ -534,6 +537,9 @@ window.addEventListener(HASH ? "hashchange" : "popstate", render);
 let rt;
 window.addEventListener("resize", () => {
   clearTimeout(rt);
+  // teljes képernyős műnél (telefonon a teljes képernyőre váltás és az elforgatás is átméretezés) nem rajzolunk újra,
+  // különben az újrarajzolás bezárná a művet; a bezáráskor pótoljuk
+  if (document.querySelector(".app-stage.is-full")) { resizeLater = true; return; }
   rt = setTimeout(() => { if (org) org.resize(); render(); }, 150);
 });
 

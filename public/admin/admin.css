@@ -246,3 +246,6 @@ textarea.poems { font-family: "Literata", Georgia, serif; font-size: 14px; line-
 .link-btn { text-decoration: none; display: inline-flex; align-items: center; color: inherit; font: inherit; }
 .szovet-open { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .szovet-open:hover { background: var(--accent); filter: brightness(1.08); }
+/* Újdonságok: a művek sorai egy sorban a gombokkal */
+.news-item { align-items: center; }
+.news-item .ops { flex-direction: row; }

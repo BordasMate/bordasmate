@@ -59,6 +59,7 @@ function resolve(path) {
   const parts = path.split("/").filter(Boolean);
   if (parts.length === 0) return { type: "home" };
   const cat = catBySlug(parts[0]);
+  if (!cat && parts[0] === NEWS_SLUG && parts.length === 1) return { type: "news" };
   if (!cat) return { type: "notfound" };
   if (parts.length === 1) return { type: "category", cat };
   const sub = childrenOf(cat).find((s) => s.slug === parts[1]);
@@ -70,6 +71,14 @@ function resolve(path) {
 }
 
 const tintOf = (palette) => TINTS[palette] ?? 0;
+
+/* ---------- Újdonságok: a szerkesztőben kiválasztott 3–4 mű, külön amőbából elérve ---------- */
+const NEWS_SLUG = "ujdonsagok";
+const newsOf = () => site.news || {};
+const newsTitle = () => (newsOf().title || "").trim() || "Újdonságok";
+// a kiválasztott művek (útvonalukkal), csak a ma is létezők
+const newsWorks = () => (newsOf().items || []).map((p) => ({ p, r: resolve(String(p || "").replace(/\/+$/, "")) })).filter((x) => x.r.type === "work").slice(0, 4);
+const newsOn = () => newsOf().show !== false && newsWorks().length > 0;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -115,6 +124,12 @@ function setCenters(n, W, H, z, cy) {
   });
 }
 
+// VISSZA: kis amőba a bal felső sarokban, egy szinttel feljebb visz (mű → almenü → menü → nyitóoldal)
+function backItem(r, z, tint) {
+  const up = r.type === "work" ? `/${r.cat.slug}/${r.sub.slug}` : r.type === "sub" ? `/${r.cat.slug}` : "/";
+  return { key: "<vissza>", label: "← Vissza", href: link(up), kind: "nav", tint, size: z.nav, minR: z.minNav * 0.9, sets: [], corner: "tl" };
+}
+
 function sceneFor(r, W, H) {
   const z = sizes(W);
   if (r.type === "home") {
@@ -135,6 +150,9 @@ function sceneFor(r, W, H) {
       const ks = s.in.map((slug) => cats.findIndex((c) => c.slug === slug)).filter((k) => k >= 0);
       if (ks.length) items.push({ key: "~" + s.slug, label: s.title, kind: "child", tint: 0, size: z.child * 0.9, minR: z.minChild * 0.9, sets: ks, peek: true });
     });
+    // Újdonságok: külön, lassan úszkáló amőba, egyik halmazhoz sem tartozik
+    if (newsOn()) items.push({ key: "/" + NEWS_SLUG, label: newsTitle(), href: link("/" + NEWS_SLUG), kind: "nav", tint: tintOf(newsOf().palette || "zoldarany"), size: z.nav * 1.15, minR: z.minNav * 1.25, sets: [],
+      float: z.narrow ? { x: W * 0.72, y: H * 0.17 } : { x: W * 0.56, y: H * 0.2 } });
     items.push(...drifters(t, W, true));
     return {
       title: site.name, h1: site.name, items,
@@ -160,9 +178,22 @@ function sceneFor(r, W, H) {
         sets: [0, ...others.map((c, i) => (s.in.includes(c.slug) ? i + 1 : -1)).filter((k) => k > 0)],
       })),
       ...others.map((c, i) => ({ key: "/" + c.slug, label: c.title, href: link("/" + c.slug), kind: "nav", tint: tintOf(c.palette), keepTint: monoOf(c), size: z.nav, minR: z.minNav * 1.1, sets: [i + 1], nucleus: i + 1 })),
+      backItem(r, z, t),
       ...drifters(t, W),
     ];
     return { title: `${cat.title} — ${site.name}`, h1: cat.title, items, sets, monoTint: monoOf(cat), startAngle: -Math.PI / 2, topInset: top, maxGrow: 1.15 };
+  }
+  if (r.type === "news") {
+    const pal = newsOf().palette || "zoldarany", t = tintOf(pal);
+    const items = [
+      ...newsWorks().map(({ p, r: x }) => ({ key: `${subKey(x.cat, x.sub)}/${x.work.slug}`, label: x.work.title, href: link(p), kind: "child", tint: t, size: z.child, minR: z.minChild, sets: [0] })),
+      backItem(r, z, t),
+      ...drifters(t, W),
+    ];
+    return {
+      title: `${newsTitle()} — ${site.name}`, h1: newsTitle(), items,
+      sets: [{ x: W / 2, y: H * 0.55, tint: t }], monoTint: hexRgb(paletteOf(pal).mono || "#b3f24d"), startAngle: -Math.PI / 2, topInset: top, maxGrow: 1.2,
+    };
   }
   if (r.type === "sub") {
     const { cat, sub } = r, t = tintOf(cat.palette), key = subKey(cat, sub);
@@ -175,12 +206,13 @@ function sceneFor(r, W, H) {
       const items = [
         ...workItems(cats.map((_, k) => k)),
         ...cats.map((c, k) => ({ key: "/" + c.slug, label: c.title, href: link("/" + c.slug), kind: "nav", tint: tintOf(c.palette), keepTint: monoOf(c), size: z.nav, minR: z.minNav * 1.1, sets: [k], nucleus: k })),
+        backItem(r, z, t),
         ...drifters(t, W),
       ];
       return { title: `${sub.title} — ${site.name}`, h1: sub.title, items, sets: cats.map((c, k) => ({ ...C[k], tint: tintOf(c.palette) })), monoTint: monoOf(cat, sub), topInset: top };
     }
     return {
-      title: `${sub.title} — ${site.name}`, h1: sub.title, items: [...workItems([0]), ...drifters(t, W)],
+      title: `${sub.title} — ${site.name}`, h1: sub.title, items: [...workItems([0]), backItem(r, z, t), ...drifters(t, W)],
       sets: [{ x: W / 2, y: H * 0.55, tint: t }], monoTint: monoOf(cat, sub), startAngle: -Math.PI / 2, topInset: top, maxGrow: 1.2,
     };
   }
@@ -199,6 +231,7 @@ function sceneFor(r, W, H) {
       ...(sub.works || []).map((w) => w === work
         ? { key: `${key}/${w.slug}`, label: w.title, kind: "child", active: true, tint: t, size: z.child * 0.9, minR: z.minChild * 0.85, sets: [0] }
         : { key: `${key}/${w.slug}`, label: w.title, href: link(`/${cat.slug}/${sub.slug}/${w.slug}`), kind: "child", tint: t, size: z.child * 0.8, minR: z.minChild * 0.75, sets: [0] }),
+      backItem(r, z, t),
       ...drifters(t, W).slice(0, z.narrow ? 4 : 7),
     ];
     return {
@@ -211,6 +244,7 @@ function sceneFor(r, W, H) {
     title: `Nincs ilyen oldal — ${site.name}`, h1: "Nincs ilyen oldal", monoTint: hexRgb(paletteOf("titan").mono || "#d1dbf2"),
     items: [
       { key: "/404", label: "Ez a sejt még nem nőtt ki", kind: "center", tint: 0, size: z.center * 0.8, minR: z.minChild },
+      backItem(r, z, 0),
       ...drifters(0, W),
     ],
     topInset: z.narrow ? 74 : 64,
@@ -280,7 +314,8 @@ if (!org) document.documentElement.classList.add("no-gl");
 function a11yLinks(r) {
   const out = [];
   const add = (t, p) => out.push(`<li><a href="${esc(link(p))}">${esc(t)}</a></li>`);
-  if (r.type === "home") site.categories.forEach((c) => add(c.title, "/" + c.slug));
+  if (r.type === "home") { site.categories.forEach((c) => add(c.title, "/" + c.slug)); if (newsOn()) add(newsTitle(), "/" + NEWS_SLUG); }
+  if (r.type === "news") { newsWorks().forEach(({ p, r: x }) => add(x.work.title, p)); add(site.name, "/"); }
   if (r.type === "category") { childrenOf(r.cat).forEach((s) => add(s.title, `/${r.cat.slug}/${s.slug}`)); add(site.name, "/"); }
   if (r.type === "sub" || r.type === "work") {
     (r.sub.works || []).forEach((w) => add(w.title, `/${r.cat.slug}/${r.sub.slug}/${w.slug}`));
@@ -298,6 +333,7 @@ function crumbsFor(r) {
   const L = (text, path) => ({ text, href: link(path) });
   const out = [L(site.name, "/")];
   if (r.type === "notfound") return [...out, { text: "Nincs ilyen oldal" }];
+  if (r.type === "news") return [...out, { text: newsTitle() }];
   if (r.sub && isShared(r.sub)) {
     // közös alkategória: mindkét halmaz neve, a metszet jelével
     out.push({ group: r.sub.in.map(catBySlug).filter(Boolean).map((c) => L(c.title, "/" + c.slug)) });

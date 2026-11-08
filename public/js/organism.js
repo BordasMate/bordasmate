@@ -820,6 +820,14 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
       });
     }
 
+    // sarokba kötött amőbák (pl. a VISSZA): a felső sáv alatt, a képernyő szélén
+    for (const s of content) if (s.corner === "tl") { s.anchor = { x: s.ax * 1.05 + (narrow ? 10 : 18), y: topInset + s.ay * 0.95 + (narrow ? 6 : 12) }; s.heavy = true; }
+    // szabadon úszkáló amőbák (pl. Újdonságok): a megadott hely körül lassan vándorolnak
+    for (const s of content) if (s.float) {
+      const x = Math.max(s.ax + 12, Math.min(W - s.ax - 12, s.float.x)), y = Math.max(topInset * 0.5 + s.ay + 8, Math.min(H - s.ay - 12, s.float.y));
+      s.anchor = { x, y }; s.heavy = true;
+    }
+
     const keep = new Set();
     for (const s of sized) {
       keep.add(s.key);
@@ -832,7 +840,7 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
         bodies.set(s.key, b);
       }
       Object.assign(b, {
-        kind: s.kind, tint: s.tint ?? 0, href: s.href || null, anchor: s.anchor || b.anchor0 || null, heavy: !!s.heavy, z: s.z ?? 0, active: !!s.active, pointText: !!s.pointText, peek: !!s.peek, keepTint: s.keepTint || null,
+        kind: s.kind, tint: s.tint ?? 0, href: s.href || null, anchor: s.anchor || b.anchor0 || null, heavy: !!s.heavy, z: s.z ?? 0, active: !!s.active, pointText: !!s.pointText, peek: !!s.peek, keepTint: s.keepTint || null, wander: s.float ? { ...s.anchor } : null,
         // a nagy felirat legfeljebb a képernyő ~harmada (mobilon a szélessége) lehet
         textFs: s.textSize ? s.textSize * Math.min(1, (W * (narrow ? 0.84 : 0.34)) / Math.max(1, textW(s.text, s.textSize, s.st.weight) * (1 + s.st.track))) : null,
         mask: (s.sets || []).reduce((m, k) => m | (1 << k), 0),
@@ -923,6 +931,10 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
     for (const b of list) {
       const L = layerOf(b);
       let fx = 0, fy = 0;
+      if (b.wander && !b.dying) b.anchor = {
+        x: b.wander.x + (reduced ? 0 : Math.sin(time * 0.09 + b.seed * 6) * Math.min(90, W * 0.07)),
+        y: b.wander.y + (reduced ? 0 : Math.sin(time * 0.13 + b.seed * 3) * Math.min(60, H * 0.05)),
+      };
       if (b.anchor) {
         const k = b.heavy ? 0.0035 : L === "near" ? 0.0005 : 0.0012;
         fx += (b.anchor.x - b.x) * k; fy += (b.anchor.y - b.y) * k;

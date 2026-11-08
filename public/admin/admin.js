@@ -66,6 +66,9 @@ function ensureSettings() {
   data.site.contact.links = data.site.contact.links || [];
   data.categories = data.categories || [];
   data.shared = data.shared || [];
+  // Újdonságok: a nyitóoldal külön amőbája, legfeljebb 4 kiválasztott művel
+  data.site.news = { title: "Újdonságok", show: true, palette: "zoldarany", items: [], ...(data.site.news || {}) };
+  if (!Array.isArray(data.site.news.items)) data.site.news.items = [];
 }
 
 function toast(html, kind = "", ms = 4200) {
@@ -142,6 +145,7 @@ function select(s) {
   renderEditor();
   if (["cat", "sub", "work"].includes(s.kind)) goPreview(pathOf(s));
   if (s.kind === "site" || s.kind === "intro") goPreview("/");
+  if (s.kind === "news") goPreview(data.site.news.items.length ? "/ujdonsagok" : "/");
 }
 
 /* ---------------- fa ---------------- */
@@ -159,7 +163,8 @@ function renderTree() {
   }
   if (tab === "site") {
     t.append(h("div.tree-section", {}, h("div.tree-head", {}, "Oldal"),
-      h("button.node" + (sel.kind === "site" ? ".sel" : ""), { onclick: () => select({ kind: "site" }) }, "Név, leírás, elérhetőség")));
+      h("button.node" + (sel.kind === "site" ? ".sel" : ""), { onclick: () => select({ kind: "site" }) }, "Név, leírás, elérhetőség"),
+      newsNode()));
     return;
   }
 
@@ -212,7 +217,13 @@ function renderTree() {
     data.shared.length ? null : h("div.list-empty", { style: "padding:2px 8px" }, "Nincs közös alkategória."),
     data.shared.map((sub, si) => subNode({ si, shared: true }, sub, "", h("span.dot", { style: `background:${data.settings.sharedMono}` }))));
 
-  t.append(cats, sh);
+  t.append(h("div.tree-section", {}, h("div.tree-head", {}, "Nyitóoldal"), newsNode()), cats, sh);
+}
+function newsNode() {
+  const n = data.site.news;
+  return h("button.node" + (sel.kind === "news" ? ".sel" : ""), { onclick: () => select({ kind: "news" }), title: "A nyitóoldal külön amőbája a kiemelt művekkel" },
+    h("span.dot", { style: `background:${palColor(n.palette || "zoldarany")}` }), h("b", {}, n.title || "Újdonságok"),
+    h("span.count", {}, n.show === false ? "rejtve" : `${newsValid().length} mű`));
 }
 
 /* ---------------- hozzáadás, törlés, mozgatás ---------------- */
@@ -385,7 +396,7 @@ function renderEditor() {
   const ed = $("#editor");
   ed.innerHTML = "";
   const v = {
-    intro: viewIntro, cat: viewCategory, sub: viewSub, work: viewWork, site: viewSite,
+    intro: viewIntro, cat: viewCategory, sub: viewSub, work: viewWork, site: viewSite, news: viewNews,
     "look-colors": viewColors, "look-fonts": viewFonts, "look-texture": viewTexture, "look-glitch": viewGlitch,
   }[sel.kind];
   ed.append(...[].concat((v || viewIntro)()).flat(Infinity).filter(Boolean));
@@ -822,6 +833,68 @@ function entriesEditor(w) {
       bulk, h("button.small", { onclick: add, style: "margin-top:8px" }, "Hozzáadás")));
 }
 
+/* ---------------- Újdonságok ---------------- */
+
+// az összes mű a honlap útvonalával (közös alkategóriánál az első kategória alatt)
+function allWorks() {
+  const out = [];
+  data.categories.forEach((c, ci) => (c.children || []).forEach((s, si) => (s.works || []).forEach((w, wi) =>
+    out.push({ group: `${c.title} › ${s.title}`, title: w.title || "(cím nélkül)", path: pathOf({ kind: "work", ci, si, wi, shared: false }) }))));
+  data.shared.forEach((s, si) => (s.works || []).forEach((w, wi) =>
+    out.push({ group: `Közös › ${s.title}`, title: w.title || "(cím nélkül)", path: pathOf({ kind: "work", si, wi, shared: true }) })));
+  return out;
+}
+const newsValid = () => { const ok = new Set(allWorks().map((w) => w.path)); return data.site.news.items.filter((p) => ok.has(p)); };
+const NEWS_MAX = 4;
+
+function viewNews() {
+  const n = data.site.news;
+  const works = allWorks(), byPath = new Map(works.map((w) => [w.path, w]));
+  const groups = [...new Set(works.map((w) => w.group))];
+  const list = h("div.list");
+  const c = () => { changed(); };
+  const draw = () => {
+    list.innerHTML = "";
+    n.items.forEach((p, i) => {
+      const known = byPath.get(p);
+      list.append(h("div.list-item.news-item", {},
+        h("div.fields", {},
+          h("select", { onchange: (e) => { n.items[i] = e.target.value; c(); draw(); goPreview("/ujdonsagok"); } },
+            known ? null : h("option", { value: p, selected: true }, `⚠ már nem létező mű: ${p}`),
+            groups.map((g) => h("optgroup", { label: g }, works.filter((w) => w.group === g).map((w) =>
+              h("option", { value: w.path, selected: w.path === p, disabled: w.path !== p && n.items.includes(w.path) }, w.title)))))),
+        h("div.ops", {},
+          h("button.icon", { title: "Feljebb", onclick: () => { n.items.splice(i, 1); n.items.splice(Math.max(0, i - 1), 0, p); c(); draw(); } }, "↑"),
+          h("button.icon", { title: "Lejjebb", onclick: () => { n.items.splice(i, 1); n.items.splice(Math.min(n.items.length, i + 1), 0, p); c(); draw(); } }, "↓"),
+          h("button.icon", { title: "Eltávolítás", onclick: () => { n.items.splice(i, 1); c(); draw(); } }, "✕"))));
+    });
+    if (!n.items.length) list.append(h("p.list-empty", {}, "Még nincs kiválasztott mű. Amíg egy sincs, az amőba nem jelenik meg a nyitóoldalon."));
+    addBtn.disabled = n.items.length >= NEWS_MAX || n.items.length >= works.length;
+    addBtn.textContent = n.items.length >= NEWS_MAX ? `legfeljebb ${NEWS_MAX} mű` : "+ mű";
+    countEl.textContent = `Kiemelt művek (${n.items.length}/${NEWS_MAX})`;
+  };
+  const countEl = h("span", {});
+  const addBtn = h("button.small", { onclick: () => {
+    const next = works.find((w) => !n.items.includes(w.path));
+    if (!next || n.items.length >= NEWS_MAX) return;
+    n.items.push(next.path); c(); draw(); goPreview("/ujdonsagok");
+  } }, "+ mű");
+  draw();
+  return [
+    head("Nyitóoldal", n.title || "Újdonságok"),
+    group("Az amőba",
+      h("p.note", { html: "A nyitóoldalon egy külön, lassan úszkáló amőba, amely egyik halmazhoz sem tartozik. Rákattintva a látogató egy oldalra jut, ahol az itt kiválasztott <b>3–4 mű</b> amőbái várják; mindegyik a mű saját oldalára vezet. Ide teheted a legfrissebb munkákat, hogy elsőként legyenek megtalálhatók." }),
+      textField("Név", n.title, (v) => { n.title = v; $(".ed-title").textContent = v || "Újdonságok"; changed(); }, { placeholder: "Újdonságok" }),
+      checkField("Megjelenik a nyitóoldalon", n.show !== false, (v) => { n.show = v; changed(); }),
+      h("label.field", {}, h("span", {}, "Szín"),
+        h("select", { onchange: (e) => { n.palette = e.target.value; changed(); } },
+          PALETTE_KEYS.map((k) => h("option", { value: k, selected: (n.palette || "zoldarany") === k }, data.settings.palettes[k].label || k))))),
+    group(h("h3", {}, countEl, addBtn),
+      h("p.note", {}, "Válaszd ki a műveket a listából; a sorrend a nyilakkal állítható. Egy mű csak egyszer szerepelhet."),
+      list),
+  ];
+}
+
 function viewSite() {
   const s = data.site;
   const linksBox = h("div.list");
@@ -1002,6 +1075,8 @@ function validate() {
     list.forEach((x) => { if (seen.has(x.slug)) problems.push(`Ismétlődő webcím-rész („${x.slug}”) – ${where}`); seen.add(x.slug); if (!x.title?.trim()) problems.push(`Cím nélküli elem – ${where}`); });
   };
   dup(data.categories, "kategóriák");
+  { const ok = new Set(allWorks().map((w) => w.path));
+    data.site.news.items.forEach((p) => { if (!ok.has(p)) problems.push(`Az Újdonságok között szereplő mű már nem létezik (${p}) – az Újdonságoknál válassz helyette másikat, vagy töröld.`); }); }
   data.categories.forEach((c) => { dup(c.children || [], c.title); (c.children || []).forEach((s) => dup(s.works || [], `${c.title} › ${s.title}`)); });
   dup(data.shared, "közös alkategóriák");
   data.shared.forEach((s) => { dup(s.works || [], s.title); if ((s.in || []).length < 1) problems.push(`„${s.title}” egyik kategóriához sem tartozik.`); });

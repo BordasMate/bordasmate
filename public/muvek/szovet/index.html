@@ -518,6 +518,31 @@ html.sz-public .hud .seg{background:rgba(20,22,30,.78);border-color:rgba(233,226
 .sz-bar span{display:block;height:100%;width:0;background:currentColor;transition:width .4s ease}
 .sz-sub{margin:0;font-size:.92rem;opacity:.7;min-height:1.3em;text-align:center;max-width:36ch}
 @media (prefers-reduced-motion:reduce){.sz-w{animation:none}.sz-weave{transition:none}}
+#qe{width:min(980px,calc(100% - 24px));max-height:calc(100vh - 32px);padding:0;border:1px solid var(--line);border-radius:var(--radius-l);background:var(--panel);color:var(--ink)}
+#qe::backdrop{background:rgba(0,0,0,.4)}
+#qe .qe-head{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:14px 18px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+#qe .qe-head h2{margin:0;font-size:1.25rem;font-weight:500}
+#qe .sp{flex:1}
+#qe-find{font:inherit;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:min(300px,100%)}
+#qe .qe-help{margin:10px 18px 6px;max-width:100ch}
+#qe-list{padding:4px 18px 18px;display:flex;flex-direction:column;gap:6px}
+.qe-it{border:1px solid var(--line);border-radius:var(--radius-s);background:var(--bg)}
+.qe-it[hidden]{display:none}
+.qe-it summary{cursor:pointer;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.qe-it .qe-snip{color:var(--muted);font-size:.88rem;flex-basis:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qe-it.off summary{opacity:.5}
+.qe-it.off summary b::after{content:" · kikapcsolva";font-weight:400;font-size:.82rem}
+.qe-form{display:flex;flex-direction:column;gap:10px;padding:4px 12px 14px;border-top:1px solid var(--line)}
+.qe-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding-top:8px}
+.qe-row .sp{flex:1}
+.qe-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px 12px}
+.qe-f{display:flex;flex-direction:column;gap:3px;font-size:.82rem;color:var(--muted)}
+.qe-f i{font-style:normal;opacity:.8}
+.qe-f input,.qe-f select,.qe-f textarea{font:inherit;font-size:.95rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-s);padding:6px 9px}
+.qe-f textarea{resize:vertical;line-height:1.45}
+.qe-m{flex-direction:row;align-items:center;gap:8px}
+.qe-del{color:#b3263c}
+.qe-attr{margin:0}
 </style>
 </head>
 <body>
@@ -525,6 +550,7 @@ html.sz-public .hud .seg{background:rgba(20,22,30,.78);border-color:rgba(233,226
 <section class="szadmin" id="sz-admin" hidden aria-label="A Szövet szerkesztője">
   <div class="sza-row"><b>Szövet · szerkesztő</b><span class="sz-dirty" id="sz-dirty" hidden>mentetlen változások</span><span class="small muted" id="sz-stat" aria-live="polite"></span><span class="sp"></span>
     <a class="btn quiet" href="/muvek/szovet/" target="_blank" rel="noopener">A Szövet a honlapon ↗</a>
+    <button type="button" class="quiet" id="sz-qe" title="A naplóban a csendes percekben megjelenő idézetek">A napló idézetei</button>
     <a class="btn quiet" href="/admin">A honlap szerkesztője</a>
     <button type="button" class="primary" id="sz-save" title="Mentés a honlapra (Ctrl+S)">Mentés a honlapra</button></div>
   <p class="small muted">A hangtárba betöltött hangok azonnal feltöltődnek a honlapra, és ott is maradnak. A paraméterek (a sávok beállításai, a hangok kiosztása, a keverő, az EQ, a visszhang, a kompresszor, az önműködés, az idézetek és a színek) a <b>Mentés a honlapra</b> gombbal (Ctrl+S) kerülnek a honlapra. A látogatóknál a Szövet ezekkel indul: betölti a hangokat, megszövi a három szőttest, és önműködően fut, alapból a Napló nézetben.</p>
@@ -535,6 +561,15 @@ html.sz-public .hud .seg{background:rgba(20,22,30,.78);border-color:rgba(233,226
   <input name="pass" type="password" autocomplete="current-password" aria-label="Jelszó" required>
   <label class="inline"><input name="remember" type="checkbox"> Megjegyzés ezen a gépen</label>
   <div class="acts"><button value="cancel" class="quiet" formnovalidate>Mégse</button><button value="ok" class="primary">Belépés</button></div></form></dialog>
+<dialog id="qe" aria-labelledby="qe-h">
+  <div class="qe-head"><h2 id="qe-h">A napló idézetei</h2><span class="small muted" id="qe-count"></span><span class="sp"></span>
+    <input type="search" id="qe-find" placeholder="Keresés szerző, mű vagy szöveg szerint" aria-label="Keresés az idézetek között">
+    <button type="button" class="quiet" id="qe-add">Új részlet</button>
+    <button type="button" class="quiet" id="qe-reset">Beépített korpusz visszaállítása</button>
+    <button type="button" class="primary" id="qe-close">Kész</button></div>
+  <p class="small muted qe-help">Ezek a részletek jelennek meg a naplóban a csendes percekben, betűről betűre. Kattints egy részletre a szerkesztéshez: átírhatod a szöveget és a forrást, kikapcsolhatod, törölheted, vagy újat adhatsz hozzá. A szövegdobozban minden sor a naplóban is külön sor lesz. A változások a <b>Mentés a honlapra</b> gombbal kerülnek a honlapra.</p>
+  <div id="qe-list"></div>
+</dialog>
 <header class="top">
   <h1>Szövet</h1>
   <p class="lede">Három szövőszék, három szőttes. A hangtárból kiosztott hangokat a hangszín- és hangerőváltások mentén részekre bontja, akár ezerszeresükre nyújtja, és formált hangszőnyeget sző belőlük. A keverőben csatornánként 8 sávos EQ és tempóhoz igazítható LFO-k formálják a hangot. A feldolgozás a gépeden történik.</p>
@@ -585,6 +620,7 @@ html.sz-public .hud .seg{background:rgba(20,22,30,.78);border-color:rgba(233,226
       <label class="as"><span>Csend az idézet előtt <output id="q-pause-o"></output></span><input type="range" id="q-pause" min="5" max="180" step="5" value="20"></label>
       <button type="button" class="quiet" id="q-now">Idézet most</button>
       <button type="button" class="quiet" id="q-list">Forrásjegyzék</button>
+      <button type="button" id="q-edit" hidden>Idézetek szerkesztése</button>
       <span class="small muted" id="q-count"></span></div>
     <canvas id="logv" aria-label="Az önműködés élő naplója: minden lépés, paraméterváltozás és hangfájl-kiosztás, sávonként színezve"></canvas>
   </div>
@@ -4512,13 +4548,17 @@ function quoteAttr(it,orig){
   return'— '+s+(n?' ('+n+')':'');
 }
 function quotePick(){
-  if(!QT.bag.length)QT.bag=shuffle(KORPUSZ.map((_,i)=>i));
+  const ok=i=>!!KORPUSZ[i]&&!KORPUSZ[i].off&&!!(KORPUSZ[i].h||KORPUSZ[i].o);
+  QT.bag=QT.bag.filter(ok);
+  if(!QT.bag.length)QT.bag=shuffle(KORPUSZ.map((_,i)=>i).filter(ok));
+  if(!QT.bag.length)return null;
   let j=QT.bag.findIndex(i=>KORPUSZ[i].a!==QT.lastA);if(j<0)j=0;
   const it=KORPUSZ[QT.bag.splice(j,1)[0]];QT.lastA=it.a;return it;
 }
-function startQuote(){
+function startQuote(item){
+  const it=item||quotePick();if(!it||!(it.h||it.o))return;
   if(QT.cur&&!quoteDone(QT.cur)){QT.cur.t0=-1e12;}
-  const it=quotePick(),orig=$('#q-lang').value==='orig'&&!!it.o,body=orig?it.o:it.h;
+  const orig=($('#q-lang').value==='orig'||!it.h)&&!!it.o,body=orig?it.o:it.h;
   const parts=body.split(' / ').concat([quoteAttr(it,orig)]),seq=parts.join('\n');
   const cps=+$('#q-cps').value,base=1000/cps,at=new Float32Array(seq.length);let t=0;
   for(let i=0;i<seq.length;i++){const c=seq[i-1]||'';let m=0.55+Math.random()*0.9;
@@ -4564,8 +4604,7 @@ function buildLog(){
   $('#q-now').addEventListener('click',()=>{showLog();startQuote();});
   const qo=()=>{$('#q-cps-o').textContent=$('#q-cps').value+' betű/mp';$('#q-pause-o').textContent=$('#q-pause').value+' mp';};
   $('#q-cps').addEventListener('input',qo);$('#q-pause').addEventListener('input',qo);qo();
-  const works=new Set(KORPUSZ.filter(x=>x.m!=='f').map(x=>x.a+'|'+x.w)).size;
-  $('#q-count').textContent=`${works} mű, ${KORPUSZ.length} részlet`;
+  qCountUpdate();
   setInterval(quoteTick,250);
 }
 
@@ -4783,12 +4822,14 @@ function szCollect(){
   m.ap={int:+$('#ap-int').value,fade:+$('#ap-fade').value,files:$('#ap-files').checked,rnd:$('#ap-rnd').checked,fx:$('#ap-fx').checked};
   m.q={on:$('#q-on').checked,lang:$('#q-lang').value,cps:+$('#q-cps').value,pause:+$('#q-pause').value};
   m.vis=Object.fromEntries(VIS_ROWS.map(([k])=>[k,VIS[k].slice()]));m.waves=V.waves;
+  if(qeEdited())m.corpus=KORPUSZ.map(qeClean);
   m.assign={};BANK.forEach(it=>{const k=szKey(it);if(k&&it.decks.size)m.assign[k]=[...it.decks].sort();});
   return m;
 }
 function szApply(meta){
   if(!meta)return;
   presetApply(meta);
+  if(Array.isArray(meta.corpus)&&meta.corpus.length)qeSetCorpus(meta.corpus);
   if(meta.mixv)KEYS.forEach(k=>{if(typeof meta.mixv[k]==='number')setFader(k,meta.mixv[k]);});
   const setIn=(id,v,ev)=>{const el=$('#'+id);if(!el||v==null)return;if(el.type==='checkbox')el.checked=!!v;else el.value=String(v);el.dispatchEvent(new Event(ev||'input'));};
   if(meta.ap){setIn('ap-int',meta.ap.int);setIn('ap-fade',meta.ap.fade);setIn('ap-files',meta.ap.files,'change');setIn('ap-rnd',meta.ap.rnd,'change');setIn('ap-fx',meta.ap.fx,'change');}
@@ -4950,7 +4991,7 @@ async function szAdmin(){
     }
   }finally{SZ.loading=false;SZ.dirty=false;szUI();}
   /* minden kézi változtatás mentetlen változásnak számít; az önműködés és a program saját állításai nem */
-  const skip=el=>el.closest('#sz-admin,#sz-login,#bank-file,#pre-sec,#midi-sec,#midi-layer,#room,[data-act],.dplay,.build,.cancel,.bplay,.dsave,[data-mode],[data-pop],#log-panel,#ap-toggle,.ftog,#bank-tog,#bank-q,#bank-all,.bsel,#bank-none,#hints,#srcwave,[role=tab],#eqsel,#gdsel,#deqsel,.chname,#bands,#deq-show,#deq-hide');
+  const skip=el=>el.closest('#sz-admin,#sz-login,#bank-file,#pre-sec,#midi-sec,#midi-layer,#room,[data-act],.dplay,.build,.cancel,.bplay,.dsave,[data-mode],[data-pop],#log-pop,#log-colors,#log-dl,#log-clear,#log-hide,#q-now,#q-list,#q-edit,#sz-qe,#qe-find,#qe-close,#ap-toggle,.ftog,#bank-tog,#bank-q,#bank-all,.bsel,#bank-none,#hints,#srcwave,[role=tab],#eqsel,#gdsel,#deqsel,.chname,#bands,#deq-show,#deq-hide');
   const mark=e=>{if(!e.isTrusted)return;const t=e.target;if(!t||!t.closest||!t.closest('main')||skip(t))return;szMarkDirty();};
   document.addEventListener('input',mark,true);document.addEventListener('change',mark,true);
   document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('button'))mark(e);},true);
@@ -4960,7 +5001,93 @@ async function szAdmin(){
   window.addEventListener('beforeunload',e=>{if(SZ.dirty||SZ.queue.length||SZ.upBusy){e.preventDefault();e.returnValue='';}});
   setInterval(szUI,1000);
 }
-function szInit(){if(PUBLIC)szPublic();else szAdmin();}
+function szInit(){if(PUBLIC)szPublic();else{buildQuoteEditor();szAdmin();}}
+
+/* ===================== A napló idézeteinek szerkesztése (csak a szerkesztőben) =====================
+   A korpusz a beállításokkal együtt mentődik a honlapra (csak ha eltér a beépítettől). */
+const KORPUSZ_ORIG=JSON.stringify(KORPUSZ);
+const QE_FIELDS=['a','w','y','l','m','lang','o','h','tr','v','off'];
+function qeClean(x){const o={};QE_FIELDS.forEach(k=>{const v=x[k];if(v===undefined||v===null||v===''||v===false)return;o[k]=v;});return o;}
+const qeEdited=()=>JSON.stringify(KORPUSZ.map(qeClean))!==JSON.stringify(JSON.parse(KORPUSZ_ORIG).map(qeClean));
+function qeSetCorpus(arr){KORPUSZ.splice(0,KORPUSZ.length,...arr.map(qeClean));QT.bag=[];qCountUpdate();if(QE.open)qeRender();}
+function qCountUpdate(){
+  const on=KORPUSZ.filter(x=>!x.off),works=new Set(on.filter(x=>x.m!=='f').map(x=>x.a+'|'+x.w)).size;
+  $('#q-count').textContent=`${works} mű, ${on.length} részlet`+(on.length<KORPUSZ.length?` (${KORPUSZ.length-on.length} kikapcsolva)`:'');
+}
+const QE={open:false};
+const qeLines=s=>(s||'').split(' / ').join('\n');
+const qeJoin=s=>s.replace(/\r/g,'').split('\n').map(x=>x.trim()).filter(Boolean).join(' / ');
+function qeSummary(x){
+  const t=(x.h||x.o||'').replace(/ \/ /g,' ').slice(0,110);
+  return `<b>${escH(x.a||'(szerző nélkül)')}</b>${x.w?' · '+escH(x.w):''}<span class="qe-snip">${escH(t)}${(x.h||x.o||'').length>110?'…':''}</span>`;
+}
+const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function qeForm(x,det){
+  const f=document.createElement('div');f.className='qe-form';
+  const txt=(k,label,ph)=>`<label class="qe-f"><span>${label}</span><input type="text" data-k="${k}" value="${escH(x[k]||'')}" placeholder="${ph||''}"></label>`;
+  const area=(k,label,help)=>`<label class="qe-f qe-wide"><span>${label}${help?` <i>${help}</i>`:''}</span><textarea data-k="${k}" rows="${Math.min(10,Math.max(3,qeLines(x[k]).split('\n').length+1))}">${escH(qeLines(x[k]))}</textarea></label>`;
+  f.innerHTML=`
+    <div class="qe-row">
+      <label class="inline"><input type="checkbox" data-k="on" ${x.off?'':'checked'}> Megjelenhet a naplóban</label>
+      <label class="qe-f qe-m"><span>Fajta</span><select data-k="m">
+        <option value="q"${x.m==='q'?' selected':''}>idézet</option><option value="s"${x.m==='s'?' selected':''}>összefoglalás</option><option value="f"${x.m==='f'?' selected':''}>szövéstörténeti adat</option></select></label>
+      <span class="sp"></span>
+      <button type="button" class="quiet" data-act="try">Kipróbálás a naplóban</button>
+      <button type="button" class="quiet qe-del" data-act="del">Törlés</button></div>
+    <div class="qe-grid">${txt('a','Szerző')}${txt('w','Mű')}${txt('y','Év')}${txt('l','Hely a műben','pl. II. ének')}</div>
+    ${area('h','Magyar szöveg','ez jelenik meg; minden sor külön sorba kerül a naplóban')}
+    ${area('o','Eredeti szöveg','nem kötelező; akkor jelenik meg, ha az idézetek nyelve „eredeti nyelven”')}
+    <div class="qe-grid">${txt('lang','Az eredeti nyelve','pl. en, la, de, hu')}${txt('tr','A magyar változat forrása','pl. … fordítása alapján')}${txt('v','Megjegyzés a forráshoz')}</div>
+    <p class="small muted qe-attr"></p>`;
+  const attr=()=>{$('.qe-attr',f).textContent='A naplóban így jelenik meg a forrás: '+quoteAttr(x,false);};attr();
+  f.addEventListener('input',e=>{
+    const el=e.target,k=el.dataset.k;if(!k)return;
+    if(k==='on'){if(el.checked)delete x.off;else x.off=true;det.classList.toggle('off',!!x.off);}
+    else if(k==='h'||k==='o'){const v=qeJoin(el.value);if(v)x[k]=v;else delete x[k];}
+    else{const v=el.value.trim();if(v)x[k]=v;else delete x[k];}
+    if(k==='m'&&!x.m)x.m='q';
+    $('summary',det).innerHTML=qeSummary(x);attr();QT.bag=[];qCountUpdate();
+  });
+  f.addEventListener('click',e=>{
+    const b=e.target.closest('[data-act]');if(!b)return;
+    if(b.dataset.act==='try'){$('#qe').close();const mb=$('#hud [data-mode=log]');if(mb)mb.click();startQuote(x);}
+    if(b.dataset.act==='del'){if(!confirm(`Törlöd ezt a részletet?\n\n${x.a||''}${x.w?': '+x.w:''}`))return;
+      KORPUSZ.splice(KORPUSZ.indexOf(x),1);det.remove();QT.bag=[];qCountUpdate();qeCount();szMarkDirty();}
+  });
+  return f;
+}
+function qeItem(x){
+  const det=document.createElement('details');det.className='qe-it'+(x.off?' off':'');
+  det.innerHTML=`<summary>${qeSummary(x)}</summary>`;
+  det.addEventListener('toggle',()=>{if(det.open&&!det._f){det._f=qeForm(x,det);det.append(det._f);}});
+  det._x=x;return det;
+}
+function qeCount(){const n=KORPUSZ.length,off=KORPUSZ.filter(x=>x.off).length;$('#qe-count').textContent=`${n} részlet`+(off?`, ebből ${off} kikapcsolva`:'')+(qeEdited()?' · eltér a beépített korpusztól':'');}
+function qeRender(){
+  const list=$('#qe-list');list.textContent='';
+  KORPUSZ.forEach(x=>list.append(qeItem(x)));qeFilter();qeCount();
+}
+function qeFilter(){
+  const q=$('#qe-find').value.trim().toLowerCase();
+  $$('#qe-list .qe-it').forEach(d=>{const x=d._x;d.hidden=!!q&&![x.a,x.w,x.y,x.l,x.h,x.o,x.v].join(' ').toLowerCase().includes(q);});
+}
+function buildQuoteEditor(){
+  $('#q-edit').hidden=false;
+  const open=()=>{QE.open=true;qeRender();$('#qe').showModal();$('#qe-find').focus();};
+  $('#q-edit').addEventListener('click',open);$('#sz-qe').addEventListener('click',open);
+  $('#qe').addEventListener('close',()=>{QE.open=false;$('#qe-list').textContent='';});
+  $('#qe-close').addEventListener('click',()=>$('#qe').close());
+  $('#qe-find').addEventListener('input',qeFilter);
+  $('#qe-add').addEventListener('click',()=>{
+    const x={a:'',w:'',m:'q',lang:'hu',h:''};KORPUSZ.unshift(x);QT.bag=[];
+    $('#qe-find').value='';qeFilter();const d=qeItem(x);$('#qe-list').prepend(d);d.open=true;qeCount();
+    setTimeout(()=>{const i=$('textarea[data-k=h]',d);if(i)i.focus();},0);szMarkDirty();
+  });
+  $('#qe-reset').addEventListener('click',()=>{
+    if(!confirm('Visszaállítod a beépített korpuszt? Minden itt végzett módosítás, új és törölt részlet elvész (a honlapon csak mentés után).'))return;
+    qeSetCorpus(JSON.parse(KORPUSZ_ORIG));szMarkDirty();
+  });
+}
 
 /* ===================== Indulás és rajzciklus ===================== */
 buildBank();decks.forEach(buildStrip);buildParams();decks.forEach(wireDeck);selectTab('rhythm');

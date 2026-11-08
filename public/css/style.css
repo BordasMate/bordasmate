@@ -55,7 +55,7 @@ html, body {
 a.cell-label { pointer-events: auto; padding: .3em .4em; border-radius: 1em; }
 a.cell-label:hover, a.cell-label:focus-visible { color: #fff; outline: none; text-shadow: 0 0 2px #000, 0 0 18px rgba(255, 255, 255, .35), 0 0 30px rgba(0, 0, 0, .9); }
 a.cell-label:focus-visible { box-shadow: 0 0 0 2px rgba(255, 255, 255, .7); }
-.cell-label[data-kind="nav"] { color: #d6d8dc; }
+.cell-label[data-kind="nav"] { color: var(--keep-tint, #d6d8dc); }   /* az átvezető IRODALOM / ZENE a saját színében */
 .cell-label[data-kind="name"] { color: #f6f5f1; }
 .cell-label.gone { opacity: 0 !important; pointer-events: none; }
 /* a nyitóoldal pontfelhő-betűi: a HTML-szöveg láthatatlan, csak kattintható és felolvasható */

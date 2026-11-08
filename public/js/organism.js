@@ -62,6 +62,9 @@ uniform float uScale, uTime, uMono, uGlitch, uGSeed, uDofK;
 uniform vec4 uGRect, uGType, uGType2;
 uniform float uGrain;
 uniform vec3 uMonoTint;
+// a másik kategóriába átvezető amőbák (IRODALOM / ZENE) a saját színüket tartják: x, y, félátmérők (CSS-px) + szín és erősség
+uniform vec4 uKeep[2];
+uniform vec4 uKeepTint[2];
 ${COMMON}
 vec2 toUV(vec2 pc){ return vec2(pc.x * uScale / uRes.x, 1.0 - pc.y * uScale / uRes.y); }
 vec4 T(vec2 uv){ return textureLod(uTex, uv, 0.0); }
@@ -219,7 +222,13 @@ void main(){
   // egyszínű, de színes: a fényesség egy árnyalat skáláján (fekete → szín → fehéres)
   float L = luma(col);
   L = mix(L, smoothstep(0.0, 1.0, L), 0.35);
-  vec3 duo = uMonoTint * min(L * 1.7, 1.0) + (vec3(1.0) - uMonoTint) * smoothstep(0.6, 1.0, L) * 0.4;
+  vec3 mt = uMonoTint;
+  for (int i = 0; i < 2; i++) {
+    if (uKeep[i].z <= 0.0) continue;
+    float kd = length((pc - uKeep[i].xy) / uKeep[i].zw);
+    mt = mix(mt, uKeepTint[i].rgb, (1.0 - smoothstep(0.7, 1.3, kd)) * uKeepTint[i].a);
+  }
+  vec3 duo = mt * min(L * 1.7, 1.0) + (vec3(1.0) - mt) * smoothstep(0.6, 1.0, L) * 0.4;
   col = mix(col, duo, uMono);
 
   col *= 1.0 - 0.5 * pow(length(cd) * 1.3, 2.4);
@@ -378,7 +387,7 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
   let tier = TIERS[tierIdx];
   window.__tier = tier.name;
   const lidar = createLidar(gl);
-  const POST_U = ["uTex", "uRes", "uScale", "uTime", "uMono", "uGlitch", "uGSeed", "uDofK", "uGRect", "uGType", "uGType2", "uGrain", "uMonoTint"];
+  const POST_U = ["uTex", "uRes", "uScale", "uTime", "uMono", "uGlitch", "uGSeed", "uDofK", "uGRect", "uGType", "uGType2", "uGrain", "uMonoTint", "uKeep", "uKeepTint"];
   let post;
   function buildPrograms() {
     if (post) gl.deleteProgram(post.p);
@@ -435,6 +444,7 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
   const bArr = new Float32Array(MAX_B * 4), cArr = new Float32Array(MAX_B * 4), sArr = new Float32Array(MAX_B);
   let setCols = new Float32Array(9), nSets = 0;
   const monoTint = [1, 1, 1]; let monoTintTarget = [1, 1, 1];
+  const keepArr = new Float32Array(8), keepTintArr = new Float32Array(8);
   const gArr = new Float32Array(MAX_G * 4), gaArr = new Float32Array(MAX_G * 4), rArr = new Float32Array(MAX_R * 4);
 
   let quality = parseFloat(params.get("res")) || 1;
@@ -628,7 +638,8 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
     const hb = hoverKey ? bodies.get(hoverKey) : null;
     if (hb && !hb.pointText && hb.kind !== "drift" && hb.sx !== undefined && texts.length) {
       const rx = hb.ax * 0.95, ry = hb.ay * 0.72, j = reduced ? 0 : (hashN(tk, 99) - 0.5) * 2;
-      box(hb.sx - rx + j, hb.sy - ry, hb.sx + rx + j, hb.sy + ry, acc, { alpha: 0.85 * Math.min(1, hb.hover * 1.5), corner: 10 });
+      const hc = hb.keepTint && mono > 0.5 ? `rgb(${hb.keepTint.map((v) => Math.round(Math.min(1, v * 1.2) * 255)).join(",")})` : acc;
+      box(hb.sx - rx + j, hb.sy - ry, hb.sx + rx + j, hb.sy + ry, hc, { alpha: 0.85 * Math.min(1, hb.hover * 1.5), corner: 10 });
     }
     // --- glitch közben: követődobozok a torzított részen ---
     if (gl8) {
@@ -821,7 +832,7 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
         bodies.set(s.key, b);
       }
       Object.assign(b, {
-        kind: s.kind, tint: s.tint ?? 0, href: s.href || null, anchor: s.anchor || b.anchor0 || null, heavy: !!s.heavy, z: s.z ?? 0, active: !!s.active, pointText: !!s.pointText, peek: !!s.peek,
+        kind: s.kind, tint: s.tint ?? 0, href: s.href || null, anchor: s.anchor || b.anchor0 || null, heavy: !!s.heavy, z: s.z ?? 0, active: !!s.active, pointText: !!s.pointText, peek: !!s.peek, keepTint: s.keepTint || null,
         // a nagy felirat legfeljebb a képernyő ~harmada (mobilon a szélessége) lehet
         textFs: s.textSize ? s.textSize * Math.min(1, (W * (narrow ? 0.84 : 0.34)) / Math.max(1, textW(s.text, s.textSize, s.st.weight) * (1 + s.st.track))) : null,
         mask: (s.sets || []).reduce((m, k) => m | (1 << k), 0),
@@ -845,6 +856,9 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
     b.el.classList.toggle("active", !!b.active);
     b.el.classList.toggle("pc", !!b.pointText);   // a felirat pontfelhőként látszik, a HTML-szöveg csak felolvasható
     b.el.classList.toggle("peek", !!b.peek);      // a cím csak rámutatáskor látszik
+    // az átvezető amőba felirata a saját kategóriája színében
+    if (b.keepTint) b.el.style.setProperty("--keep-tint", `rgb(${b.keepTint.map((v) => Math.round(Math.min(1, v * 1.2) * 255)).join(",")})`);
+    else b.el.style.removeProperty("--keep-tint");
     if (b.href) b.el.setAttribute("href", b.href);
     b.el.style.fontSize = b.fs.toFixed(1) + "px";
     b.el.style.fontWeight = b.st.weight;
@@ -1116,6 +1130,13 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
     gl.uniform4fv(P.uGType2, G.type2);
     gl.uniform1f(P.uGrain, LOOK.grain);
     gl.uniform3fv(P.uMonoTint, monoTint);
+    keepArr.fill(0); keepTintArr.fill(0);
+    cells.filter((b) => b.keepTint && b.sx !== undefined && b.alpha > 0.02).slice(0, 2).forEach((b, i) => {
+      keepArr.set([b.sx, b.sy, Math.max(8, b.ax * 1.25), Math.max(8, b.ay * 1.1)], i * 4);
+      keepTintArr.set([...b.keepTint, b.alpha], i * 4);
+    });
+    gl.uniform4fv(P.uKeep, keepArr);
+    gl.uniform4fv(P.uKeepTint, keepTintArr);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     gl.bindVertexArray(null);
   }

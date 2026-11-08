@@ -159,7 +159,7 @@ function sceneFor(r, W, H) {
         key: "~" + s.slug, label: s.title, href: subHref(cat, s), kind: "child", tint: t, size: z.child, minR: z.minChild,
         sets: [0, ...others.map((c, i) => (s.in.includes(c.slug) ? i + 1 : -1)).filter((k) => k > 0)],
       })),
-      ...others.map((c, i) => ({ key: "/" + c.slug, label: c.title, href: link("/" + c.slug), kind: "nav", tint: tintOf(c.palette), size: z.nav, minR: z.minNav * 1.1, sets: [i + 1], nucleus: i + 1 })),
+      ...others.map((c, i) => ({ key: "/" + c.slug, label: c.title, href: link("/" + c.slug), kind: "nav", tint: tintOf(c.palette), keepTint: monoOf(c), size: z.nav, minR: z.minNav * 1.1, sets: [i + 1], nucleus: i + 1 })),
       ...drifters(t, W),
     ];
     return { title: `${cat.title} — ${site.name}`, h1: cat.title, items, sets, monoTint: monoOf(cat), startAngle: -Math.PI / 2, topInset: top, maxGrow: 1.15 };
@@ -174,7 +174,7 @@ function sceneFor(r, W, H) {
       const C = setCenters(cats.length, W, H, z, H * 0.56).map((c) => (z.narrow ? c : { x: c.x < W / 2 ? W * 0.14 : W * 0.86, y: c.y }));
       const items = [
         ...workItems(cats.map((_, k) => k)),
-        ...cats.map((c, k) => ({ key: "/" + c.slug, label: c.title, href: link("/" + c.slug), kind: "nav", tint: tintOf(c.palette), size: z.nav, minR: z.minNav * 1.1, sets: [k], nucleus: k })),
+        ...cats.map((c, k) => ({ key: "/" + c.slug, label: c.title, href: link("/" + c.slug), kind: "nav", tint: tintOf(c.palette), keepTint: monoOf(c), size: z.nav, minR: z.minNav * 1.1, sets: [k], nucleus: k })),
         ...drifters(t, W),
       ];
       return { title: `${sub.title} — ${site.name}`, h1: sub.title, items, sets: cats.map((c, k) => ({ ...C[k], tint: tintOf(c.palette) })), monoTint: monoOf(cat, sub), topInset: top };

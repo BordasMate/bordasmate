@@ -792,7 +792,9 @@ export function createOrganism(canvas, labelLayer, opts = {}) {
       const sum = content.reduce((a, s) => a + Math.PI * s.ax * s.ay, 0);
       const maxAx = Math.max(...content.map((s) => s.ax), 1);
       const k = Math.min(scene.maxGrow ?? 1.4, Math.sqrt((area * (narrow ? 0.46 : 0.36)) / sum), (W * (narrow ? 0.47 : 0.4)) / maxAx);
-      if (Math.abs(k - 1) > 0.02) sized = items.map((it, i) => (it.kind === "drift" ? sized[i] : fit(it, Math.max(0.55, k > 1 ? 1 + (k - 1) * 0.6 : k), k)));
+      // fekvő telefonon (alacsony képernyő) a feliratok ne zsugorodjanak olvashatatlanra
+      const fsMin = H < 500 && W > H ? 0.74 : 0.55;
+      if (Math.abs(k - 1) > 0.02) sized = items.map((it, i) => (it.kind === "drift" ? sized[i] : fit(it, Math.max(fsMin, k > 1 ? 1 + (k - 1) * 0.6 : k), k)));
     }
     const content = sized.filter((s) => s.kind !== "drift");
 

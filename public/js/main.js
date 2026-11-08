@@ -84,16 +84,18 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 /* ---------- jelenetek ---------- */
 
-function sizes(W) {
+function sizes(W, H = window.innerHeight) {
   const narrow = W < 640;
+  // fekvő telefon: széles, de alacsony képernyő — a telefonos betűméretek, de vízszintes elrendezés
+  const short = !narrow && H < 500 && W > H;
   return {
-    narrow,
+    narrow, short,
     name: narrow ? clamp(W / 11, 26, 36) : clamp(W / 25, 36, 64),
-    center: narrow ? 23 : 34,
-    child: narrow ? 17 : 22,
-    nav: narrow ? 12 : 14,
-    minChild: narrow ? 56 : 84,
-    minNav: narrow ? 38 : 50,
+    center: narrow || short ? 23 : 34,
+    child: narrow || short ? 17 : 22,
+    nav: narrow || short ? 12 : 14,
+    minChild: narrow ? 56 : short ? 60 : 84,
+    minNav: narrow || short ? 38 : 50,
   };
 }
 
@@ -131,7 +133,7 @@ function backItem(r, z, tint) {
 }
 
 function sceneFor(r, W, H) {
-  const z = sizes(W);
+  const z = sizes(W, H);
   if (r.type === "home") {
     // a főmenü: a két fő halmaz neve nagy, térbeli pontfelhő-betűkkel; alattuk az almenük amőbái,
     // amelyeknek a címe csak akkor jelenik meg, ha az egér föléjük ér (a név a felső sávban)
@@ -157,12 +159,12 @@ function sceneFor(r, W, H) {
     return {
       title: site.name, h1: site.name, items,
       sets: cats.map((c, k) => ({ ...C[k], tint: tintOf(c.palette) })),
-      comp: { x: W / 2, y: H * 0.6 }, maxGrow: 1.1, topInset: z.narrow ? 120 : 150,
+      comp: { x: W / 2, y: H * 0.6 }, maxGrow: 1.1, topInset: z.narrow ? 120 : z.short ? 60 : 150,
     };
   }
   // menükben: a menü neve a felső útvonalsávba kerül (Bordás Máté › Irodalom › …),
   // a térben csak az almenük maradnak, egy tömör csoportban
-  const top = z.narrow ? 74 : 64;
+  const top = z.narrow ? 74 : z.short ? 46 : 64;
   if (r.type === "category") {
     const { cat } = r, t = tintOf(cat.palette);
     // a kategória halmaza középen, a vele metsző halmazok a szélén
@@ -222,9 +224,9 @@ function sceneFor(r, W, H) {
       ? (() => { const hh = (H * 0.54 - 12) / 2; return { x: W / 2, y: H - 12 - hh, hw: W / 2 - 12, hh, tint: t }; })()
       : (() => {
         // beágyazott programnál szélesebb panel, hogy a mű a lehető legnagyobb keretet kapja
-        const hw = work.app ? Math.min(640, W * 0.36) : Math.min(400, W * 0.27);
-        const hh = work.app ? (H - top - 24) / 2 : H * 0.4;
-        return { x: W - 24 - hw - Math.max(0, W * (work.app ? 0.04 : 0.08) - 40), y: work.app ? top + hh : H * 0.54, hw, hh, tint: t };
+        const hw = work.app ? Math.min(640, W * (z.short ? 0.4 : 0.36)) : Math.min(400, W * (z.short ? 0.31 : 0.27));
+        const hh = work.app || z.short ? (H - top - (z.short ? 12 : 24)) / 2 : H * 0.4;
+        return { x: W - (z.short ? 10 : 24) - hw - (z.short ? 0 : Math.max(0, W * (work.app ? 0.04 : 0.08) - 40)), y: work.app || z.short ? top + hh : H * 0.54, hw, hh, tint: t };
       })();
     // az alkategória összes műve együtt marad; az éppen megnyitott kiemelve
     const items = [
@@ -247,12 +249,13 @@ function sceneFor(r, W, H) {
       backItem(r, z, 0),
       ...drifters(0, W),
     ],
-    topInset: z.narrow ? 74 : 64,
+    topInset: z.narrow ? 74 : z.short ? 46 : 64,
   };
 }
 
 function appStage(w) {
   return `<div class="app-stage" data-app="${esc(w.app)}">
+    <div class="app-bar" aria-hidden="true"><span>${esc(w.title)}</span></div>
     <iframe src="${esc(w.app)}" title="${esc(w.title)}" allow="autoplay; fullscreen; microphone; camera; midi; clipboard-write" allowfullscreen></iframe>
     <button class="app-full" type="button" aria-label="Teljes képernyő">Teljes képernyő ⤢</button>
   </div>`;
@@ -454,14 +457,42 @@ function go(path) {
 }
 
 // interaktív mű teljes képernyőn: a háttérgrafika ilyenkor szünetel, hogy a mű kapja a gép erejét
-function setAppFull(stage, on) {
+const isPhone = () => matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) < 600;
+// álló képernyőn a teljes képernyős mű 90°-kal elforgatva jelenik meg (fekvő nézet); ha a telefont elfordítják, visszaáll
+function updateRot() {
+  const st = document.querySelector(".app-stage.is-full");
+  document.querySelectorAll(".app-stage.rot").forEach((x) => { if (x !== st) x.classList.remove("rot"); });
+  if (st) st.classList.toggle("rot", isPhone() && window.innerHeight > window.innerWidth);
+}
+async function setAppFull(stage, on) {
   stage.classList.toggle("is-full", on);
   document.documentElement.classList.toggle("app-open", on);
   stage.querySelector(".app-full").textContent = on ? "Bezárás ✕" : "Teljes képernyő ⤢";
   if (org && org.pause) org.pause(on);
-  if (on) stage.querySelector("iframe").focus();
-  else fitAppStage();
+  if (on) {
+    stage.querySelector("iframe").focus();
+    if (isPhone()) {
+      // az egész oldal megy teljes képernyőre (nem a keret: azt a böngésző nem engedné elforgatni)
+      const root = document.documentElement;
+      try { const rq = root.requestFullscreen || root.webkitRequestFullscreen; if (rq) { await rq.call(root, { navigationUI: "hide" }); stage._fs = true; } } catch (e) {}
+      try { await screen.orientation.lock("landscape"); } catch (e) {}
+    }
+  } else {
+    stage.classList.remove("rot");
+    if (stage._fs) { stage._fs = false; try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (e) {} }
+    try { screen.orientation.unlock(); } catch (e) {}
+    fitAppStage();
+  }
+  updateRot();
+  setTimeout(updateRot, 400);   // a tájolás váltása után a méretek kicsit később frissülnek
 }
+window.addEventListener("resize", updateRot);
+window.addEventListener("orientationchange", () => setTimeout(updateRot, 250));
+// a telefon „vissza” gombja vagy gesztusa kilépteti a teljes képernyőből: ilyenkor a mű is visszaáll a panelbe
+document.addEventListener("fullscreenchange", () => {
+  const st = document.querySelector(".app-stage.is-full");
+  if (st && st._fs && !document.fullscreenElement) { st._fs = false; setAppFull(st, false); }
+});
 document.addEventListener("keydown", (e) => {
   const st = document.querySelector(".app-stage.is-full");
   if (st && e.key === "Escape") setAppFull(st, false);

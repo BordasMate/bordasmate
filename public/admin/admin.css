@@ -244,3 +244,5 @@ textarea.poems { font-family: "Literata", Georgia, serif; font-size: 14px; line-
 
 /* a Szövet szerkesztőjére mutató gomb */
 .link-btn { text-decoration: none; display: inline-flex; align-items: center; color: inherit; font: inherit; }
+.szovet-open { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.szovet-open:hover { background: var(--accent); filter: brightness(1.08); }

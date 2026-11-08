@@ -505,6 +505,10 @@ function viewWork() {
   const about = (w.about || []).join("\n\n");
   const parts = [
     head(`Mű · ${sub.title}`, w.title, [h("button.small", { onclick: () => move(-1) }, "↑"), h("button.small", { onclick: () => move(1) }, "↓"), h("button.small.danger", { onclick: del }, "Törlés")]),
+    // a Szövet hangjai és paraméterei a saját beállítóoldalán szerkeszthetők
+    /\/muvek\/szovet\/?$/.test(w.app || "") ? group("Szövet: hangok és beállítások",
+      h("p.note", {}, "A Szövet hangfájljait és paramétereit (szövőszékek, keverő, EQ, önműködés, napló, színek) a mű saját beállítóoldalán töltheted be és állíthatod: új lapon nyílik. A hangok betöltéskor azonnal felkerülnek a honlapra, a beállításokat ott a „Mentés a honlapra” gombbal mentheted."),
+      h("p", {}, h("a.link-btn.szovet-open", { href: "/muvek/szovet/?admin", target: "_blank", rel: "noopener" }, "A Szövet beállítóoldalának megnyitása ↗"))) : null,
     group("Alapadatok", ...titleSlug(w, sub.works),
       textField("Rövid sor a cím alatt", w.meta, (v) => { w.meta = v; changed({ tree: false }); }, { placeholder: "pl. versek · Napkút Kiadó, 2020" }),
       h("label.field", {}, h("span", {}, "Áthelyezés másik alkategóriába"),

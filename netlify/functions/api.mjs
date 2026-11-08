@@ -10,6 +10,11 @@
 //   POST /api/import              egy közlés szövegének betöltése a forrásból (weboldal vagy PDF; jelszó kell)
 //   GET  /api/media/<fájl>        a feltöltött fájl
 //
+//   A Szövet (/muvek/szovet/) mentett állapota:
+//   GET  /api/szovet              a hangtár listája és a beállítások (a honlap ezekkel indítja a művet)
+//   PUT  /api/szovet/bank         a hangtár listája (jelszó kell); maguk a hangfájlok a /api/doc útvonalon, darabokban
+//   PUT  /api/szovet/settings     a paraméterek (jelszó kell)
+//
 //   Nagy dokumentumok (pl. folyóiratszámok PDF-je) darabokban – a Netlify egy kérésben legfeljebb ~6 MB-ot enged:
 //   POST   /api/doc?name=<fájl>&size=<bájt>   feltöltés indítása (jelszó kell) → { id, partSize, parts }
 //   PUT    /api/doc/<id>/<n>                  az n-edik darab (jelszó kell)
@@ -91,6 +96,33 @@ export default async (req) => {
       const { blobs } = await store.list({ prefix: "history/" });
       const old = blobs.map((b) => b.key).sort().reverse().slice(HISTORY_KEEP);
       await Promise.all(old.map((k) => store.delete(k)));
+      return json({ ok: true, savedAt });
+    }
+
+    /* ---------- Szövet ---------- */
+    if (path === "/szovet" && req.method === "GET") {
+      const [bank, settings] = await Promise.all([
+        store.getWithMetadata("szovet/bank", { type: "json" }),
+        store.getWithMetadata("szovet/settings", { type: "json" }),
+      ]);
+      if (!bank && !settings) return fail(404, "A Szövet még nincs beállítva.");
+      return json({
+        bank: bank ? bank.data : { files: [] },
+        settings: settings ? { ...settings.data, savedAt: settings.metadata?.savedAt || null } : null,
+        savedAt: settings?.metadata?.savedAt || bank?.metadata?.savedAt || null,
+      });
+    }
+    if ((path === "/szovet/bank" || path === "/szovet/settings") && req.method === "PUT") {
+      const a = await authorized(req);
+      if (!a.ok) return fail(a.status, a.message);
+      const text = await req.text();
+      if (text.length > MAX_CONTENT) return fail(413, "Túl nagy.");
+      let data;
+      try { data = JSON.parse(text); } catch { return fail(400, "Hibás JSON."); }
+      if (!data || typeof data !== "object") return fail(400, "Hibás adat.");
+      if (path === "/szovet/bank" && !Array.isArray(data.files)) return fail(400, "Hiányzik a hangok listája.");
+      const savedAt = new Date().toISOString();
+      await store.set(path.slice(1), JSON.stringify(data), { metadata: { savedAt } });
       return json({ ok: true, savedAt });
     }
 

@@ -1037,6 +1037,17 @@
           ],
           "app": "/muvek/monstrorum-infinitum/",
           "links": []
+        },
+        {
+          "title": "Szövet",
+          "slug": "szovet",
+          "meta": "generatív hangmű · önműködő hangszőnyeg, 2026",
+          "about": [
+            "Három szövőszék, három szőttes. A program a hangtár hangjait a hangszín- és hangerőváltások mentén részekre bontja, akár ezerszeresükre nyújtja, és formált hangszőnyeget sző belőlük. Önműködően fut: a sávokat időről időre elhalkítja, új hangokat és paramétereket kap, újraszövi és visszaúsztatja őket.",
+            "A Napló lépésről lépésre követi, mit csinál a program, a csendes percekben pedig a szövésről szóló irodalmi és filozófiai szövegekből ír ki részleteket. Mellette választható az Élő szövet, a Szerkezet és a Montázs nézet. A hang a látogató gépén születik."
+          ],
+          "app": "/muvek/szovet/",
+          "links": []
         }
       ]
     },

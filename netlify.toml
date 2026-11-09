@@ -49,3 +49,10 @@
   for = "/content.json"
   [headers.values]
     Cache-Control = "no-cache"
+
+# botok: a keresők indexelhetnek, de az AI-k ne használják fel a tartalmat
+# (a valódi kitiltást a netlify/edge-functions/botblock.js végzi; a szerkesztő noindex-e fent marad)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noai, noimageai"
